@@ -1,0 +1,172 @@
+/* Global Styles */
+body {
+  font-family: 'Arial', sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f9f9f9;
+  color: #333;
+}
+
+header {
+  background-color: #4CAF50;
+  color: white;
+  padding: 20px;
+  text-align: center;
+  font-size: 1.8em;
+  font-weight: bold;
+}
+
+main {
+  max-width: 900px;
+  margin: 30px auto;
+  padding: 20px;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Movie Selection */
+#movie-selection {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+#movie-selection label {
+  font-size: 1.2em;
+  margin-right: 10px;
+  color: #555;
+}
+
+#movie-dropdown {
+  padding: 10px;
+  font-size: 1em;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+#play-movie {
+  padding: 10px 20px;
+  font-size: 1em;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-left: 10px;
+  transition: background-color 0.3s ease;
+}
+
+#play-movie:hover {
+  background-color: #45a049;
+}
+
+video {
+  width: 100%;
+  max-width: 800px;
+  border-radius: 10px;
+  margin-top: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Chat Section */
+#chat {
+  margin-top: 30px;
+}
+
+#chat h2 {
+  font-size: 1.5em;
+  color: #4CAF50;
+  text-align: center;
+}
+
+#messages {
+  border: 1px solid #ddd;
+  padding: 10px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: #f7f7f7;
+  border-radius: 5px;
+  margin-bottom: 10px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+#messages div {
+  margin-bottom: 8px;
+  padding: 8px;
+  border-radius: 5px;
+  background-color: #e8f5e9;
+  color: #333;
+}
+
+#message-input {
+  width: calc(80% - 20px);
+  padding: 10px;
+  margin-right: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+#send-message {
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+#send-message:hover {
+  background-color: #0056b3;
+}
+
+/* Voice Chat Section */
+#video-chat {
+  margin-top: 40px;
+}
+
+#video-chat h2 {
+  font-size: 1.5em;
+  color: #4CAF50;
+  text-align: center;
+}
+
+#voice-chat-container {
+  margin-top: 20px;
+  padding: 15px;
+  border: 1px solid #ddd;
+  background: #f7f7f7;
+  border-radius: 5px;
+  text-align: center;
+}
+
+#start-voice-chat,
+#stop-voice-chat {
+  font-size: 1em;
+  padding: 10px 20px;
+  margin: 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  border: none;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+#start-voice-chat {
+  background-color: #4CAF50;
+  color: white;
+}
+
+#start-voice-chat:hover {
+  background-color: #45a049;
+  transform: scale(1.05);
+}
+
+#stop-voice-chat {
+  background-color: #dc3545;
+  color: white;
+}
+
+#stop-voice-chat:hover {
+  background-color: #c82333;
+  transform: scale(1.05);
+}

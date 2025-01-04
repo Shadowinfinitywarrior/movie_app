@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Movie App</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Movie App</h1>
+    </header>
+    <main>
+      <!-- Movie Selection and Player -->
+      <div id="movie-selection">
+        <label for="movie-dropdown">Select a Movie:</label>
+        <select id="movie-dropdown"></select>
+        <button id="play-movie">Play Movie</button>
+      </div>
+      <video id="movie-player" controls></video>
+
+      <!-- Chat Section -->
+      <div id="chat">
+        <h2>Text Chat</h2>
+        <div id="messages"></div>
+        <input type="text" id="message-input" placeholder="Type a message...">
+        <button id="send-message">Send</button>
+      </div>
+
+      <!-- Voice Chat Section -->
+      <div id="video-chat">
+        <h2>Voice Chat</h2>
+        <button id="start-voice-chat">Start Voice Chat</button>
+        <button id="stop-voice-chat" style="display: none;">Stop Voice Chat</button>
+        <div id="voice-chat-container">
+          <!-- Voice chat stream will appear here -->
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
