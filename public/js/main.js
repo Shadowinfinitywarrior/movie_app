@@ -5,13 +5,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   const messageInput = document.getElementById('message-input');
   const sendMessageButton = document.getElementById('send-message');
   const messagesDiv = document.getElementById('messages');
+  const clearChatButton = document.getElementById('clear-chat');
   const startVoiceChatButton = document.getElementById('start-voice-chat');
   const stopVoiceChatButton = document.getElementById('stop-voice-chat');
-  const localAudio = document.createElement('audio');  // For local audio (microphone)
+  const voiceChatContainer = document.getElementById('voice-chat-container');
+  const localAudio = document.createElement('audio'); // For local audio
   let localStream;
   let peerConnection;
+  const username = prompt("Enter your username:");
   const socket = io();
-  const roomName = 'movie-room';  // You can make this dynamic for different movie rooms
+  const roomName = 'movie-room'; // Dynamic room logic can be added here
 
   // Join the chat room
   socket.emit('joinRoom', roomName);
@@ -28,7 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     movieDropdown.appendChild(option);
   });
 
-  // Play the selected movie when the "Play Movie" button is clicked
+  // Play the selected movie
   playButton.addEventListener('click', () => {
     const selectedMovieId = movieDropdown.value;
     if (selectedMovieId) {
@@ -36,120 +39,113 @@ document.addEventListener('DOMContentLoaded', async () => {
       const movieSource = document.createElement('source');
       movieSource.src = movieUrl;
       movieSource.type = 'video/mp4';
-      moviePlayer.innerHTML = ''; // Clear any previous source
+      moviePlayer.innerHTML = ''; // Clear previous source
       moviePlayer.appendChild(movieSource);
       moviePlayer.load();
       moviePlayer.play();
     }
   });
 
-  // Send chat message to the server
+  // Send chat message
   sendMessageButton.addEventListener('click', () => {
     const message = messageInput.value;
     if (message.trim()) {
-      socket.emit('chatMessage', { room: roomName, message });
-      messageInput.value = ''; // Clear input field
+      socket.emit('chatMessage', { room: roomName, username, message });
+      messageInput.value = ''; // Clear input
     }
   });
 
-  // Receive messages from other users via socket.io
-  socket.on('chatMessage', (message) => {
+  // Receive chat messages
+  socket.on('chatMessage', (data) => {
     const messageElement = document.createElement('div');
-    messageElement.textContent = message;
+    messageElement.textContent = `${data.username}: ${data.message}`;
     messagesDiv.appendChild(messageElement);
   });
 
-  // Get user media (microphone)
+  // Clear chat messages
+  clearChatButton.addEventListener('click', () => {
+    messagesDiv.innerHTML = '';
+  });
+
+  // Voice chat logic
   async function getUserMedia() {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     localStream = stream;
-
-    // Display local audio (optional, if you want to show it)
     localAudio.srcObject = localStream;
     localAudio.play();
   }
 
-  // Handle incoming signaling messages for voice chat
-  socket.on('signal', async (data) => {
-    if (data.type === 'offer') {
-      // Create a new peer connection
-      peerConnection = new RTCPeerConnection();
-      peerConnection.addStream(localStream);
-
-      // Handle the incoming stream (from other peer)
-      peerConnection.onaddstream = (event) => {
-        const remoteAudio = document.createElement('audio');
-        remoteAudio.srcObject = event.stream;
-        remoteAudio.play();
-      };
-
-      // Create and send answer
-      const answer = await peerConnection.createAnswer();
-      await peerConnection.setLocalDescription(answer);
-      socket.emit('signal', { type: 'answer', data: answer });
-    }
-
-    if (data.type === 'answer') {
-      await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
-    }
-
-    if (data.type === 'candidate') {
-      await peerConnection.addIceCandidate(new RTCIceCandidate(data));
-    }
-  });
-
-  // Send ICE candidate when found
   function sendIceCandidate(candidate) {
     socket.emit('signal', { type: 'candidate', data: candidate });
   }
 
-  // Start voice chat (make an offer)
   async function startVoiceChat() {
+    await getUserMedia();
     peerConnection = new RTCPeerConnection();
     peerConnection.addStream(localStream);
 
     peerConnection.onaddstream = (event) => {
       const remoteAudio = document.createElement('audio');
       remoteAudio.srcObject = event.stream;
-      remoteAudio.play();
+      remoteAudio.autoplay = true;
+      voiceChatContainer.appendChild(remoteAudio);
     };
 
     peerConnection.onicecandidate = (event) => {
-      if (event.candidate) {
-        sendIceCandidate(event.candidate);
-      }
+      if (event.candidate) sendIceCandidate(event.candidate);
     };
 
-    // Create and send offer
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
     socket.emit('signal', { type: 'offer', data: offer });
 
-    // Show Stop Voice Chat button and hide Start Voice Chat button
-    stopVoiceChatButton.style.display = 'inline-block';
     startVoiceChatButton.style.display = 'none';
+    stopVoiceChatButton.style.display = 'inline-block';
   }
 
-  // Stop voice chat (close peer connection and streams)
   function stopVoiceChat() {
     if (peerConnection) {
       peerConnection.close();
       peerConnection = null;
     }
-    localStream.getTracks().forEach(track => track.stop());
-    localStream = null;
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+      localStream = null;
+    }
 
-    // Hide Stop Voice Chat button and show Start Voice Chat button again
-    stopVoiceChatButton.style.display = 'none';
     startVoiceChatButton.style.display = 'inline-block';
+    stopVoiceChatButton.style.display = 'none';
+    voiceChatContainer.innerHTML = ''; // Clear remote streams
   }
 
-  // Start voice chat when button is clicked
-  startVoiceChatButton.addEventListener('click', async () => {
-    await getUserMedia(); // Get user's audio stream
-    startVoiceChat(); // Start the voice chat
-  });
-
-  // Stop voice chat when button is clicked
+  startVoiceChatButton.addEventListener('click', startVoiceChat);
   stopVoiceChatButton.addEventListener('click', stopVoiceChat);
+
+  socket.on('signal', async (data) => {
+    if (data.type === 'offer') {
+      await getUserMedia();
+      peerConnection = new RTCPeerConnection();
+      peerConnection.addStream(localStream);
+
+      peerConnection.onaddstream = (event) => {
+        const remoteAudio = document.createElement('audio');
+        remoteAudio.srcObject = event.stream;
+        remoteAudio.autoplay = true;
+        voiceChatContainer.appendChild(remoteAudio);
+      };
+
+      peerConnection.onicecandidate = (event) => {
+        if (event.candidate) sendIceCandidate(event.candidate);
+      };
+
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(data.data));
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+      socket.emit('signal', { type: 'answer', data: answer });
+    } else if (data.type === 'answer') {
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(data.data));
+    } else if (data.type === 'candidate') {
+      await peerConnection.addIceCandidate(new RTCIceCandidate(data.data));
+    }
+  });
 });
