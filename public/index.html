@@ -5,10 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Movie App</title>
   <link rel="stylesheet" href="css/styles.css">
+  <!-- Include Axios from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script> 
 </head>
 <body>
   <div id="app">
     <header>
+      <img src="logo.png" alt="Movie App Logo" id="logo">
       <h1>Movie App</h1>
     </header>
     <main>
@@ -18,7 +21,12 @@
         <select id="movie-dropdown"></select>
         <button id="play-movie">Play Movie</button>
       </div>
-      <video id="movie-player" controls></video>
+
+      <div id="video-container">
+        <video id="movie-player" controls></video>
+      </div>
+
+      
 
       <!-- Chat Section -->
       <div id="chat">
@@ -27,16 +35,6 @@
         <input type="text" id="message-input" placeholder="Type a message...">
         <button id="send-message">Send</button>
         <button id="clear-chat">Clear Chat</button>
-      </div>
-
-      <!-- Voice Chat Section -->
-      <div id="video-chat">
-        <h2>Voice Chat</h2>
-        <button id="start-voice-chat">Start Voice Chat</button>
-        <button id="stop-voice-chat" style="display: none;">Stop Voice Chat</button>
-        <div id="voice-chat-container">
-          <!-- Voice chat streams will appear here -->
-        </div>
       </div>
     </main>
   </div>
