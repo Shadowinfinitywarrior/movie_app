@@ -14,10 +14,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   let peerConnection;
   const username = prompt("Enter your username:");
   const socket = io();
-  const roomName = 'movie-room'; // Dynamic room logic can be added here
+  let currentRoom = 'movie-room'; // Default room
+
+  const uploadStatusContainer = document.getElementById('upload-status-container');
+  const uploadProgress = document.getElementById('upload-progress');
+  const uploadPercentage = document.getElementById('upload-percentage');
 
   // Join the chat room
-  socket.emit('joinRoom', roomName);
+  socket.emit('joinRoom', currentRoom);
 
   // Fetch the list of movies from the server
   const response = await fetch('/movies');
@@ -29,6 +33,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     option.value = movie.file_id;
     option.textContent = movie.file_name;
     movieDropdown.appendChild(option);
+  });
+
+  // Disable play button until a movie is selected
+  playButton.disabled = !movieDropdown.value;
+
+  // Enable or disable play button based on selection
+  movieDropdown.addEventListener('change', () => {
+    playButton.disabled = !movieDropdown.value;
   });
 
   // Play the selected movie
@@ -50,7 +62,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   sendMessageButton.addEventListener('click', () => {
     const message = messageInput.value;
     if (message.trim()) {
-      socket.emit('chatMessage', { room: roomName, username, message });
+      socket.emit('chatMessage', { room: currentRoom, username, message });
       messageInput.value = ''; // Clear input
     }
   });
@@ -64,15 +76,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Clear chat messages
   clearChatButton.addEventListener('click', () => {
-    messagesDiv.innerHTML = '';
+    if (confirm("Are you sure you want to clear the chat?")) {
+      messagesDiv.innerHTML = '';
+    }
   });
 
   // Voice chat logic
   async function getUserMedia() {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    localStream = stream;
-    localAudio.srcObject = localStream;
-    localAudio.play();
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      localStream = stream;
+      localAudio.srcObject = localStream;
+      localAudio.play();
+    } catch (err) {
+      console.error('Error accessing media devices:', err);
+      alert('Could not access your microphone. Please grant permission.');
+    }
   }
 
   function sendIceCandidate(candidate) {
@@ -148,4 +167,40 @@ document.addEventListener('DOMContentLoaded', async () => {
       await peerConnection.addIceCandidate(new RTCIceCandidate(data.data));
     }
   });
+
+  // Upload a movie to Telegram and show progress
+  async function uploadMovieToTelegram(movieFile) {
+    const formData = new FormData();
+    formData.append('document', movieFile);
+
+    uploadStatusContainer.style.display = 'block'; // Show the progress bar
+
+    try {
+      const response = await fetch('/upload-movie', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.lengthComputable) {
+            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            uploadProgress.value = percent;
+            uploadPercentage.textContent = `${percent}%`;
+          }
+        }
+      });
+
+      if (response.ok) {
+        alert('Movie uploaded successfully!');
+      } else {
+        throw new Error('Failed to upload movie');
+      }
+    } catch (err) {
+      console.error('Upload failed:', err);
+      alert('Failed to upload the movie.');
+    } finally {
+      uploadStatusContainer.style.display = 'none'; // Hide the progress bar
+    }
+  }
 });
