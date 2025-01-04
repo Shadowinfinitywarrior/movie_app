@@ -120,6 +120,28 @@ video {
   background-color: #0056b3;
 }
 
+/* Clear Chat Button */
+#clear-chat {
+  padding: 10px 20px;
+  font-size: 1em;
+  background-color: #ff4d4d;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+#clear-chat:hover {
+  background-color: #e60000;
+  transform: translateY(-2px);
+}
+
+#clear-chat:active {
+  background-color: #cc0000;
+  transform: translateY(2px);
+}
+
 /* Voice Chat Section */
 #video-chat {
   margin-top: 40px;
