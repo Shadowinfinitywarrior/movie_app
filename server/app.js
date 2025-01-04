@@ -4,6 +4,9 @@ const axios = require('axios');
 const path = require('path');
 const http = require('http');
 const socketIo = require('socket.io'); // Import Socket.IO
+const multer = require('multer'); // Import multer for file uploads
+const fs = require('fs');
+const formData = require('form-data');
 
 const app = express();
 const server = http.createServer(app);
@@ -16,6 +19,15 @@ const CHAT_ID = process.env.CHAT_ID || '5920561171';
 
 // Serve static files (HTML, CSS, JS)
 app.use(express.static(path.join(__dirname, '../public')));
+
+// Set up multer to handle file uploads
+const upload = multer({ dest: 'uploads/' });
+
+// Ensure the uploads directory exists
+const uploadDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
 // Endpoint to fetch movie list from Telegram bot
 app.get('/movies', async (req, res) => {
@@ -64,6 +76,64 @@ app.get('/updates', async (req, res) => {
   } catch (error) {
     console.error('Error fetching updates:', error.message);
     res.status(500).send('Error fetching updates');
+  }
+});
+
+// Endpoint to upload a video file and send it to the Telegram bot with progress tracking
+app.post('/upload', upload.single('video'), async (req, res) => {
+  const file = req.file;
+
+  if (!file) {
+    return res.status(400).send('No file uploaded');
+  }
+
+  // Prepare the form data to send to Telegram
+  const form = new formData();
+  form.append('chat_id', CHAT_ID);
+  form.append('document', fs.createReadStream(path.join(__dirname, '../uploads', file.filename)));
+
+  // Send the file to Telegram
+  try {
+    // Tracking the upload progress
+    let uploadedBytes = 0;
+    const totalBytes = file.size;
+
+    form.getLength((err, length) => {
+      if (err) {
+        console.error('Error calculating form length:', err);
+        return res.status(500).send('Error calculating form length');
+      }
+
+      // Use axios to send the form with progress
+      axios.post(
+        `https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`,
+        form,
+        {
+          headers: form.getHeaders(),
+          maxContentLength: Infinity,
+          maxBodyLength: Infinity,
+          onUploadProgress: (progressEvent) => {
+            if (progressEvent.lengthComputable) {
+              uploadedBytes = progressEvent.loaded;
+              const percent = Math.round((uploadedBytes / totalBytes) * 100);
+              // Emit progress to the frontend
+              io.emit('uploadProgress', { percent });
+            }
+          }
+        }
+      )
+      .then(response => {
+        // After successful upload to Telegram, send a response
+        res.status(200).send('File uploaded to Telegram successfully');
+      })
+      .catch(error => {
+        console.error('Error uploading file to Telegram:', error.message);
+        res.status(500).send('Error uploading file to Telegram');
+      });
+    });
+  } catch (error) {
+    console.error('Error during file upload:', error.message);
+    res.status(500).send('Error uploading file');
   }
 });
 
