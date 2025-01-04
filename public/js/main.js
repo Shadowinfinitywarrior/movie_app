@@ -6,16 +6,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   const sendMessageButton = document.getElementById('send-message');
   const messagesDiv = document.getElementById('messages');
   const clearChatButton = document.getElementById('clear-chat');
-  const uploadStatusContainer = document.getElementById('upload-status-container');
-  const uploadProgress = document.getElementById('upload-progress');
-  const uploadPercentage = document.getElementById('upload-percentage');
-  
+  const startVoiceChatButton = document.getElementById('start-voice-chat');
+  const stopVoiceChatButton = document.getElementById('stop-voice-chat');
+  const voiceChatContainer = document.getElementById('voice-chat-container');
+  const localAudio = document.createElement('audio'); // For local audio
+  let localStream;
+  let peerConnection;
   const username = prompt("Enter your username:");
   const socket = io();
   let currentRoom = 'movie-room'; // Default room
 
-  // Only allow the Admin1456 to control video playback
-  const isAdmin = username === 'Admin1456';
+  const uploadStatusContainer = document.getElementById('upload-status-container');
+  const uploadProgress = document.getElementById('upload-progress');
+  const uploadPercentage = document.getElementById('upload-percentage');
 
   // Join the chat room
   socket.emit('joinRoom', currentRoom);
@@ -32,30 +35,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     movieDropdown.appendChild(option);
   });
 
-  // Disable play button if the user is not Admin
-  playButton.disabled = !isAdmin || !movieDropdown.value;
+  // Disable play button until a movie is selected
+  playButton.disabled = !movieDropdown.value;
 
-  // Enable or disable play button based on selection (and user role)
+  // Enable or disable play button based on selection
   movieDropdown.addEventListener('change', () => {
-    playButton.disabled = !isAdmin || !movieDropdown.value;
+    playButton.disabled = !movieDropdown.value;
   });
 
-  // Play the selected movie (only if the user is Admin)
+  // Play the selected movie
   playButton.addEventListener('click', () => {
-    if (isAdmin) {
-      const selectedMovieId = movieDropdown.value;
-      if (selectedMovieId) {
-        const movieUrl = `/play/${selectedMovieId}`;
-        const movieSource = document.createElement('source');
-        movieSource.src = movieUrl;
-        movieSource.type = 'video/mp4';
-        moviePlayer.innerHTML = ''; // Clear previous source
-        moviePlayer.appendChild(movieSource);
-        moviePlayer.load();
-        moviePlayer.play();
-      }
-    } else {
-      alert('You do not have permission to play the video.');
+    const selectedMovieId = movieDropdown.value;
+    if (selectedMovieId) {
+      const movieUrl = `/play/${selectedMovieId}`;
+      const movieSource = document.createElement('source');
+      movieSource.src = movieUrl;
+      movieSource.type = 'video/mp4';
+      moviePlayer.innerHTML = ''; // Clear previous source
+      moviePlayer.appendChild(movieSource);
+      moviePlayer.load();
+      moviePlayer.play();
     }
   });
 
@@ -82,18 +81,106 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  // Voice chat logic
+  async function getUserMedia() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      localStream = stream;
+      localAudio.srcObject = localStream;
+      localAudio.play();
+    } catch (err) {
+      console.error('Error accessing media devices:', err);
+      alert('Could not access your microphone. Please grant permission.');
+    }
+  }
+
+  function sendIceCandidate(candidate) {
+    socket.emit('signal', { type: 'candidate', data: candidate });
+  }
+
+  async function startVoiceChat() {
+    await getUserMedia();
+    peerConnection = new RTCPeerConnection();
+    peerConnection.addStream(localStream);
+
+    peerConnection.onaddstream = (event) => {
+      const remoteAudio = document.createElement('audio');
+      remoteAudio.srcObject = event.stream;
+      remoteAudio.autoplay = true;
+      voiceChatContainer.appendChild(remoteAudio);
+    };
+
+    peerConnection.onicecandidate = (event) => {
+      if (event.candidate) sendIceCandidate(event.candidate);
+    };
+
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+    socket.emit('signal', { type: 'offer', data: offer });
+
+    startVoiceChatButton.style.display = 'none';
+    stopVoiceChatButton.style.display = 'inline-block';
+  }
+
+  function stopVoiceChat() {
+    if (peerConnection) {
+      peerConnection.close();
+      peerConnection = null;
+    }
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+      localStream = null;
+    }
+
+    startVoiceChatButton.style.display = 'inline-block';
+    stopVoiceChatButton.style.display = 'none';
+    voiceChatContainer.innerHTML = ''; // Clear remote streams
+  }
+
+  startVoiceChatButton.addEventListener('click', startVoiceChat);
+  stopVoiceChatButton.addEventListener('click', stopVoiceChat);
+
+  socket.on('signal', async (data) => {
+    if (data.type === 'offer') {
+      await getUserMedia();
+      peerConnection = new RTCPeerConnection();
+      peerConnection.addStream(localStream);
+
+      peerConnection.onaddstream = (event) => {
+        const remoteAudio = document.createElement('audio');
+        remoteAudio.srcObject = event.stream;
+        remoteAudio.autoplay = true;
+        voiceChatContainer.appendChild(remoteAudio);
+      };
+
+      peerConnection.onicecandidate = (event) => {
+        if (event.candidate) sendIceCandidate(event.candidate);
+      };
+
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(data.data));
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+      socket.emit('signal', { type: 'answer', data: answer });
+    } else if (data.type === 'answer') {
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(data.data));
+    } else if (data.type === 'candidate') {
+      await peerConnection.addIceCandidate(new RTCIceCandidate(data.data));
+    }
+  });
+
   // Upload a movie to Telegram and show progress
   async function uploadMovieToTelegram(movieFile) {
     const formData = new FormData();
     formData.append('document', movieFile);
 
     uploadStatusContainer.style.display = 'block'; // Show the progress bar
-    uploadProgress.value = 0; // Reset progress
 
     try {
-      const response = await axios.post('/upload', formData, {
+      const response = await fetch('/upload-movie', {
+        method: 'POST',
+        body: formData,
         headers: {
-          'Content-Type': 'multipart/form-data',
+          'Content-Type': 'multipart/form-data'
         },
         onUploadProgress: (progressEvent) => {
           if (progressEvent.lengthComputable) {
@@ -101,23 +188,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             uploadProgress.value = percent;
             uploadPercentage.textContent = `${percent}%`;
           }
-        },
+        }
       });
 
-      if (response.status === 200) {
+      if (response.ok) {
         alert('Movie uploaded successfully!');
-
-        // Assuming response contains movie file info (name and file_id or URL)
-        const uploadedMovie = response.data; // Adjust according to your backend response
-
-        // Add the new movie to the dropdown
-        const option = document.createElement('option');
-        option.value = uploadedMovie.file_id; // or uploadedMovie.file_url
-        option.textContent = uploadedMovie.file_name;
-        movieDropdown.appendChild(option);
-
-        // Enable the play button now that a movie is available
-        playButton.disabled = !isAdmin || !movieDropdown.value;
       } else {
         throw new Error('Failed to upload movie');
       }
@@ -128,13 +203,4 @@ document.addEventListener('DOMContentLoaded', async () => {
       uploadStatusContainer.style.display = 'none'; // Hide the progress bar
     }
   }
-
-  // Handle file input and upload
-  const videoFileInput = document.getElementById('video-file');
-  videoFileInput.addEventListener('change', (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      uploadMovieToTelegram(file);
-    }
-  });
 });
