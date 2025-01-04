@@ -11,8 +11,8 @@ const io = socketIo(server); // Set up WebSocket server
 const PORT = process.env.PORT || 3000;
 
 // Replace with your bot token and chat ID
-const BOT_TOKEN = '7207667371:AAFYpBgHyGmgQhqANyzeVEUAN1Q5ZoWQBBI';  // Your bot token
-const CHAT_ID = '5920561171'; // Your chat ID
+const BOT_TOKEN = process.env.BOT_TOKEN || '7207667371:AAFYpBgHyGmgQhqANyzeVEUAN1Q5ZoWQBBI';
+const CHAT_ID = process.env.CHAT_ID || '5920561171';
 
 // Serve static files (HTML, CSS, JS)
 app.use(express.static(path.join(__dirname, '../public')));
@@ -20,7 +20,6 @@ app.use(express.static(path.join(__dirname, '../public')));
 // Endpoint to fetch movie list from Telegram bot
 app.get('/movies', async (req, res) => {
   try {
-    // Fetch updates from Telegram bot
     const response = await axios.get(`https://api.telegram.org/bot${BOT_TOKEN}/getUpdates`);
     const updates = response.data.result;
 
@@ -34,7 +33,7 @@ app.get('/movies', async (req, res) => {
 
     res.json(movies);
   } catch (error) {
-    console.error('Error fetching movies from Telegram:', error);
+    console.error('Error fetching movies from Telegram:', error.message);
     res.status(500).send('Error fetching movies');
   }
 });
@@ -63,7 +62,7 @@ app.get('/updates', async (req, res) => {
 
     res.json(updates);
   } catch (error) {
-    console.error('Error fetching updates:', error);
+    console.error('Error fetching updates:', error.message);
     res.status(500).send('Error fetching updates');
   }
 });
@@ -81,7 +80,7 @@ app.get('/play/:fileId', async (req, res) => {
     const fileURL = `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`;
     res.redirect(fileURL);  // Redirect to the movie URL
   } catch (error) {
-    console.error('Error streaming movie:', error);
+    console.error('Error streaming movie:', error.message);
     res.status(500).send('Error streaming movie');
   }
 });
@@ -97,7 +96,10 @@ io.on('connection', (socket) => {
 
   // Handle chat messages
   socket.on('chatMessage', (data) => {
-    io.to(roomName).emit('chatMessage', data.message);
+    io.to(roomName).emit('chatMessage', {
+      username: data.username || 'Anonymous',
+      message: data.message,
+    });
   });
 
   // Handle WebRTC signaling messages
