@@ -35,7 +35,6 @@ app.get('/movies', async (req, res) => {
     const response = await axios.get(`https://api.telegram.org/bot${BOT_TOKEN}/getUpdates`);
     const updates = response.data.result;
 
-    // Extract movie documents (files) from the updates
     const movies = updates
       .filter(update => update.message && update.message.document)
       .map(update => ({
@@ -56,13 +55,11 @@ app.get('/updates', async (req, res) => {
     const response = await axios.get(`https://api.telegram.org/bot${BOT_TOKEN}/getUpdates`);
     const updates = response.data.result;
 
-    // Process each update
     updates.forEach(update => {
       if (update.message && update.message.text === '/start') {
         const userId = update.message.from.id;
         const firstName = update.message.from.first_name;
 
-        // Send a welcome message to the user when they use /start
         axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
           chat_id: userId,
           text: `Hello, ${firstName}! Welcome to the Movie Bot! Use /movies to see available movies.`,
@@ -87,14 +84,11 @@ app.post('/upload', upload.single('video'), async (req, res) => {
     return res.status(400).send('No file uploaded');
   }
 
-  // Prepare the form data to send to Telegram
   const form = new formData();
   form.append('chat_id', CHAT_ID);
   form.append('document', fs.createReadStream(path.join(__dirname, '../uploads', file.filename)));
 
-  // Send the file to Telegram
   try {
-    // Tracking the upload progress
     let uploadedBytes = 0;
     const totalBytes = file.size;
 
@@ -104,7 +98,6 @@ app.post('/upload', upload.single('video'), async (req, res) => {
         return res.status(500).send('Error calculating form length');
       }
 
-      // Use axios to send the form with progress
       axios.post(
         `https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`,
         form,
@@ -116,14 +109,12 @@ app.post('/upload', upload.single('video'), async (req, res) => {
             if (progressEvent.lengthComputable) {
               uploadedBytes = progressEvent.loaded;
               const percent = Math.round((uploadedBytes / totalBytes) * 100);
-              // Emit progress to the frontend
               io.emit('uploadProgress', { percent });
             }
           }
         }
       )
       .then(response => {
-        // After successful upload to Telegram, send a response
         res.status(200).send('File uploaded to Telegram successfully');
       })
       .catch(error => {
@@ -146,21 +137,19 @@ app.get('/play/:fileId', async (req, res) => {
     );
     const filePath = fileResponse.data.result.file_path;
 
-    // Construct file URL to stream the movie
     const fileURL = `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`;
-    res.redirect(fileURL);  // Redirect to the movie URL
+    res.redirect(fileURL); 
   } catch (error) {
     console.error('Error streaming movie:', error.message);
     res.status(500).send('Error streaming movie');
   }
 });
 
-// WebSocket signaling for WebRTC
+// WebSocket signaling for WebRTC (includes screen sharing)
 io.on('connection', (socket) => {
   console.log('A user connected');
 
-  // Room management: Join the chat room
-  const roomName = 'movie-room';  // You can make this dynamic based on movie selection
+  const roomName = 'movie-room'; 
   socket.join(roomName);
   console.log(`User joined room: ${roomName}`);
 
@@ -175,6 +164,11 @@ io.on('connection', (socket) => {
   // Handle WebRTC signaling messages
   socket.on('signal', (data) => {
     socket.broadcast.to(roomName).emit('signal', data);
+  });
+
+  // Handle screen sharing stream
+  socket.on('screenShare', (data) => {
+    socket.broadcast.to(roomName).emit('screenShare', data);
   });
 
   // Handle disconnection
