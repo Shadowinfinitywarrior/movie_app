@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
+  // Get elements
   const movieDropdown = document.getElementById('movie-dropdown');
   const playButton = document.getElementById('play-movie');
   const moviePlayer = document.getElementById('movie-player');
@@ -6,19 +7,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const sendMessageButton = document.getElementById('send-message');
   const messagesDiv = document.getElementById('messages');
   const clearChatButton = document.getElementById('clear-chat');
-  const startVoiceChatButton = document.getElementById('start-voice-chat');
-  const stopVoiceChatButton = document.getElementById('stop-voice-chat');
-  const voiceChatContainer = document.getElementById('voice-chat-container');
-  const localAudio = document.createElement('audio'); // For local audio
-  let localStream;
+  const startScreenShareButton = document.getElementById('screen-share-button');
+  const stopScreenShareButton = document.getElementById('stop-screen-share');
+  const screenShareVideo = document.getElementById('screen-share-video');
+
   let peerConnection;
+  let screenStream; // For screen sharing
   const username = prompt("Enter your username:");
   const socket = io();
   let currentRoom = 'movie-room'; // Default room
-
-  const uploadStatusContainer = document.getElementById('upload-status-container');
-  const uploadProgress = document.getElementById('upload-progress');
-  const uploadPercentage = document.getElementById('upload-percentage');
 
   // Join the chat room
   socket.emit('joinRoom', currentRoom);
@@ -81,126 +78,58 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Voice chat logic
-  async function getUserMedia() {
+  // Screen sharing logic
+  async function startScreenShare() {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      localStream = stream;
-      localAudio.srcObject = localStream;
-      localAudio.play();
-    } catch (err) {
-      console.error('Error accessing media devices:', err);
-      alert('Could not access your microphone. Please grant permission.');
-    }
-  }
+      screenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { cursor: "always", height: 1000, width: 1200 },
+        audio: false
+      });
+      screenShareVideo.srcObject = screenStream; // Display the screen stream in the local video
 
-  function sendIceCandidate(candidate) {
-    socket.emit('signal', { type: 'candidate', data: candidate });
-  }
-
-  async function startVoiceChat() {
-    await getUserMedia();
-    peerConnection = new RTCPeerConnection();
-    peerConnection.addStream(localStream);
-
-    peerConnection.onaddstream = (event) => {
-      const remoteAudio = document.createElement('audio');
-      remoteAudio.srcObject = event.stream;
-      remoteAudio.autoplay = true;
-      voiceChatContainer.appendChild(remoteAudio);
-    };
-
-    peerConnection.onicecandidate = (event) => {
-      if (event.candidate) sendIceCandidate(event.candidate);
-    };
-
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-    socket.emit('signal', { type: 'offer', data: offer });
-
-    startVoiceChatButton.style.display = 'none';
-    stopVoiceChatButton.style.display = 'inline-block';
-  }
-
-  function stopVoiceChat() {
-    if (peerConnection) {
-      peerConnection.close();
-      peerConnection = null;
-    }
-    if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
-      localStream = null;
-    }
-
-    startVoiceChatButton.style.display = 'inline-block';
-    stopVoiceChatButton.style.display = 'none';
-    voiceChatContainer.innerHTML = ''; // Clear remote streams
-  }
-
-  startVoiceChatButton.addEventListener('click', startVoiceChat);
-  stopVoiceChatButton.addEventListener('click', stopVoiceChat);
-
-  socket.on('signal', async (data) => {
-    if (data.type === 'offer') {
-      await getUserMedia();
       peerConnection = new RTCPeerConnection();
-      peerConnection.addStream(localStream);
-
-      peerConnection.onaddstream = (event) => {
-        const remoteAudio = document.createElement('audio');
-        remoteAudio.srcObject = event.stream;
-        remoteAudio.autoplay = true;
-        voiceChatContainer.appendChild(remoteAudio);
-      };
+      screenStream.getTracks().forEach(track => peerConnection.addTrack(track, screenStream));
 
       peerConnection.onicecandidate = (event) => {
         if (event.candidate) sendIceCandidate(event.candidate);
       };
 
-      await peerConnection.setRemoteDescription(new RTCSessionDescription(data.data));
-      const answer = await peerConnection.createAnswer();
-      await peerConnection.setLocalDescription(answer);
-      socket.emit('signal', { type: 'answer', data: answer });
-    } else if (data.type === 'answer') {
-      await peerConnection.setRemoteDescription(new RTCSessionDescription(data.data));
-    } else if (data.type === 'candidate') {
-      await peerConnection.addIceCandidate(new RTCIceCandidate(data.data));
-    }
-  });
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+      socket.emit('signal', { type: 'offer', data: offer });
 
-  // Upload a movie to Telegram and show progress
-  async function uploadMovieToTelegram(movieFile) {
-    const formData = new FormData();
-    formData.append('document', movieFile);
-
-    uploadStatusContainer.style.display = 'block'; // Show the progress bar
-
-    try {
-      const response = await fetch('/upload-movie', {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        },
-        onUploadProgress: (progressEvent) => {
-          if (progressEvent.lengthComputable) {
-            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            uploadProgress.value = percent;
-            uploadPercentage.textContent = `${percent}%`;
-          }
-        }
-      });
-
-      if (response.ok) {
-        alert('Movie uploaded successfully!');
-      } else {
-        throw new Error('Failed to upload movie');
-      }
+      startScreenShareButton.style.display = 'none';
+      stopScreenShareButton.style.display = 'inline-block';
     } catch (err) {
-      console.error('Upload failed:', err);
-      alert('Failed to upload the movie.');
-    } finally {
-      uploadStatusContainer.style.display = 'none'; // Hide the progress bar
+      console.error('Error starting screen share:', err);
+      alert('Could not start screen sharing. Make sure you are using a supported browser.');
+    }
+  }
+
+  function stopScreenShare() {
+    if (peerConnection) {
+      peerConnection.close();
+      peerConnection = null;
+    }
+    if (screenStream) {
+      screenStream.getTracks().forEach(track => track.stop());
+      screenStream = null;
+    }
+
+    startScreenShareButton.style.display = 'inline-block';
+    stopScreenShareButton.style.display = 'none';
+    screenShareVideo.srcObject = null; // Clear screen share video
+  }
+
+  startScreenShareButton.addEventListener('click', startScreenShare);
+  stopScreenShareButton.addEventListener('click', stopScreenShare);
+
+  // Log screen-sharing options
+  function logScreenShareInfo() {
+    const videoTrack = screenShareVideo.srcObject?.getVideoTracks()[0];
+    if (videoTrack) {
+      console.info("Track settings:", videoTrack.getSettings());
+      console.info("Track constraints:", videoTrack.getConstraints());
     }
   }
 });
