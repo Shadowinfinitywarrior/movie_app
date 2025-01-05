@@ -53,6 +53,8 @@ main {
   font-size: 1em;
   border-radius: 5px;
   border: 1px solid #ccc;
+  background-color: #333; /* Updated for consistency */
+  color: #e0e0e0;
 }
 
 #play-movie {
@@ -87,6 +89,47 @@ video {
   position: sticky;
   top: 0;
   z-index: 1; /* Keeps video on top of chat */
+}
+
+/* Screen Sharing & Audio Stream */
+#screen-sharing-container {
+  margin-top: 20px;
+  text-align: center;
+}
+
+#screen-sharing-container video {
+  width: 100%;
+  max-width: 100%;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+#screen-share-button, #stop-screen-share {
+  padding: 10px 20px;
+  background-color: #f0ad4e;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+#screen-share-button:hover {
+  background-color: #ec971f;
+}
+
+#stop-screen-share {
+  padding: 10px 20px;
+  background-color: #d9534f;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+#stop-screen-share:hover {
+  background-color: #c9302c;
 }
 
 /* Chat Section */
@@ -167,4 +210,69 @@ video {
 #clear-chat:active {
   background-color: #cc0000;
   transform: translateY(2px);
+}
+
+/* Upload Progress Container */
+#upload-status-container {
+  display: none;
+  margin-top: 20px;
+  text-align: center;
+}
+
+#upload-progress {
+  width: 100%;
+  height: 20px;
+  border-radius: 10px;
+  background-color: #444;
+}
+
+#upload-percentage {
+  font-size: 1.2em;
+  color: #e0e0e0;
+  margin-top: 10px;
+}
+
+/* Voice Chat Section */
+#voice-chat-container {
+  margin-top: 30px;
+  padding: 20px;
+  background-color: #333;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+#voice-chat-container audio {
+  width: 100%;
+  margin-top: 10px;
+  border-radius: 5px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+#start-voice-chat, #stop-voice-chat {
+  padding: 10px 20px;
+  font-size: 1em;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  margin: 10px;
+  transition: background-color 0.3s ease;
+}
+
+#start-voice-chat {
+  background-color: #28a745;
+  color: white;
+}
+
+#stop-voice-chat {
+  background-color: #dc3545;
+  color: white;
+  display: none;
+}
+
+#start-voice-chat:hover {
+  background-color: #218838;
+}
+
+#stop-voice-chat:hover {
+  background-color: #c82333;
 }
